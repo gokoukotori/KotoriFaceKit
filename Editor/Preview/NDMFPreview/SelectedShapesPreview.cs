@@ -112,7 +112,47 @@ internal class SelectedShapesPreview : AbstractFaceTunePreview<SelectedShapesPre
             return true;
         }
 
+        var targetGameObject = context.Observe(_targetObject, o => o as GameObject, (a, b) => a == b);
+        if (targetGameObject != null)
+        {
+            if (HasExpressionPreviewAnchor(context, targetGameObject)) return false;
+
+            using var _sourceComponents = ListPool<ExpressionDataSourceComponent>.Get(out var sourceComponents);
+            context.GetComponents(targetGameObject, sourceComponents);
+            if (sourceComponents.Count > 0)
+            {
+                var observeContext = new NDMFPreviewObserveContext(context);
+
+                using var _facial = ListPool<BlendShapeWeightAnimation>.Get(out var facial);
+                FacialStyleContext.TryGetFacialStyleAnimationsAndObserve(targetGameObject, facial, root, observeContext);
+
+                resultToAdd.AddRange(facial);
+                AddSourceBlendShapeAnimations(targetGameObject, resultToAdd, facial, bodyPath, observeContext);
+                return true;
+            }
+        }
+
         return false;
+    }
+
+    private static bool HasExpressionPreviewAnchor(ComputeContext context, GameObject gameObject)
+    {
+        return context.GetComponent<ExpressionDataComponent>(gameObject) != null ||
+               context.GetComponent<ExpressionComponent>(gameObject) != null ||
+               context.GetComponent<ConditionComponent>(gameObject) != null;
+    }
+
+    private static void AddSourceBlendShapeAnimations(
+        GameObject sourceGameObject,
+        ICollection<BlendShapeWeightAnimation> resultToAdd,
+        IReadOnlyList<BlendShapeWeightAnimation> facialAnimations,
+        string bodyPath,
+        IObserveContext observeContext)
+    {
+        foreach (var source in ExpressionDataComponent.GetExpandedSourceOnlySources(sourceGameObject, observeContext))
+        {
+            source.GetBlendShapeAnimations(resultToAdd, facialAnimations, bodyPath, observeContext);
+        }
     }
 
     // data > expression > condition の順で対象を決定し早期リターン

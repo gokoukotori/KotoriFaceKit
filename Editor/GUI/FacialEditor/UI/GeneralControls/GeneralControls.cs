@@ -108,6 +108,8 @@ internal class GeneralControls : IDisposable
     {
         { typeof(AnimationClip), () => new AnimationClipTargeting() },
         { typeof(ExpressionDataComponent), () => new ExpressionDataTargeting() },
+        { typeof(BaseExpressionDataComponent), () => new ExpressionDataSourceTargeting<BaseExpressionDataComponent>() },
+        { typeof(ExpressionOverrideComponent), () => new ExpressionDataSourceTargeting<ExpressionOverrideComponent>() },
         { typeof(FacialStyleComponent), () => new FacialStyleTargeting() },
         { typeof(AdvancedEyeBlinkComponent), () => new AdvancedEyeBlinkTargeting() },
         { typeof(AdvancedLipSyncComponent), () => new AdvancedLipSyncTargeting() },

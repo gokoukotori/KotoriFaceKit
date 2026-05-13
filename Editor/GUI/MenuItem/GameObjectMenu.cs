@@ -20,11 +20,11 @@ internal static class GameObjectMenu
 
         // Unpackするが、直下のOptionのみ除外する。
         // 後から追加されるオプションを入れたい。
-        PrefabUtility.UnpackPrefabInstance(root, PrefabUnpackMode.OutermostRoot, InteractionMode.UserAction);
+        PrefabUtilityCompat.UnpackPrefabInstance(root, PrefabUnpackMode.OutermostRoot, InteractionMode.UserAction);
         foreach (Transform child in root.transform)
         {
             if (child.name == "Option") continue;
-            PrefabUtility.UnpackPrefabInstance(child.gameObject, PrefabUnpackMode.Completely, InteractionMode.UserAction);
+            PrefabUtilityCompat.UnpackPrefabInstance(child.gameObject, PrefabUnpackMode.Completely, InteractionMode.UserAction);
         }
 
         return root;

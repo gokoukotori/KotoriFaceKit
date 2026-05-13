@@ -46,7 +46,7 @@ internal static class PrefabAssets
         
         if (unpack)
         {
-            UnityEditor.PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.UserAction);
+            PrefabUtilityCompat.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.UserAction);
         }
 
         if (addInstaller)

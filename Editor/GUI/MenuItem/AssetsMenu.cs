@@ -50,8 +50,7 @@ internal static class AssetsMenu
 
             toggle.AddComponent<ExpressionComponent>();
             var dataComponent = toggle.AddComponent<ExpressionDataComponent>();
-            dataComponent.Clip = clip;
-            dataComponent.ClipOption = ClipImportOption.NonZero;
+            ExpressionDataAuthoringUtility.CreateReferenceBaseFromClip(dataComponent, clip, ClipImportOption.NonZero);
         }
 
         menuObject.AddComponent<PatternComponent>();

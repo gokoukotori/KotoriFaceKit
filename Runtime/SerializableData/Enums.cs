@@ -52,3 +52,9 @@ public enum ClipImportOption
     NonZero,
     FacialStyleOverridesOrNonZero
 }
+
+public enum ExpressionDataMode
+{
+    Inline,
+    Reference
+}
