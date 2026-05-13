@@ -115,6 +115,30 @@ msgstr "Missing Blend Shapes"
 msgid "ExpressionDataComponent:label:AnimationClipMode"
 msgstr "Animation Clip"
 
+msgid "ExpressionDataComponent:label:ReferenceMode"
+msgstr "References"
+
+msgid "ExpressionDataComponent:button:ConvertInlineToReference"
+msgstr "Convert Inline To Reference"
+
+msgid "ExpressionDataComponent:button:CreateBaseData"
+msgstr "Create Base Data"
+
+msgid "ExpressionDataComponent:button:CreateExpressionOverride"
+msgstr "Create Expression Override"
+
+msgid "ExpressionDataComponent:prop:Mode"
+msgstr "Mode"
+
+msgid "ExpressionDataComponent:prop:Mode:tooltip"
+msgstr "Switches whether this Expression Data directly holds data or references the new expression data components."
+
+msgid "ExpressionDataComponent:prop:DataReferences"
+msgstr "Expression Data References"
+
+msgid "ExpressionDataComponent:prop:DataReferences:tooltip"
+msgstr "Base Expression Data and Expression Override components to compose. Same-GameObject sources use component order; external overrides use their target data."
+
 msgid "ExpressionDataComponent:prop:Clip"
 msgstr "Animation Clip"
 
@@ -149,6 +173,67 @@ msgid "ExpressionDataComponent:prop:AllBlendShapeAnimationAsFacial"
 msgstr "Treat all blend shape animations as facial animations"
 
 msgid "ExpressionDataComponent:prop:AllBlendShapeAnimationAsFacial:tooltip"
+msgstr "Treats all blend shape animations included in the animation clip as facial animations. This is useful when dealing with animation clips for other avatars where paths may differ."
+
+# ExpressionOverrideComponent
+
+msgid "ExpressionOverrideComponent:prop:TargetBase"
+msgstr "Target Data"
+
+msgid "ExpressionOverrideComponent:prop:TargetBase:tooltip"
+msgstr "The Base Expression Data or Expression Override component this override applies to when it is outside the same GameObject stack."
+
+msgid "ExpressionOverrideComponent:warning:TargetBaseMissing"
+msgstr "Target data is not set. This override will not be applied unless it is part of a same-GameObject stack."
+
+msgid "ExpressionOverrideComponent:info:SameGameObjectStack"
+msgstr "This override is applied by component order because a Base Expression Data component exists on the same GameObject."
+
+msgid "ExpressionOverrideComponent:info:OverrideOnlyStack"
+msgstr "This override uses the first Expression Override target on this GameObject and is applied by component order."
+
+# ExpressionDataSourceComponent
+
+msgid "ExpressionDataSourceComponent:prop:Memo"
+msgstr "Memo"
+
+msgid "ExpressionDataSourceComponent:prop:Memo:tooltip"
+msgstr "Authoring memo for this expression data source. This does not affect build, preview, or animation output."
+
+msgid "ExpressionDataSourceComponent:label:MissingBlendShapes"
+msgstr "Missing Blend Shapes"
+
+msgid "ExpressionDataSourceComponent:label:AnimationClipMode"
+msgstr "Animation Clip"
+
+msgid "ExpressionDataSourceComponent:prop:Clip"
+msgstr "Animation Clip"
+
+msgid "ExpressionDataSourceComponent:prop:Clip:tooltip"
+msgstr "This animation clip primarily applies blend shape animations for expressions, but can also include other types of animations such as ear movements, which are applied at build time."
+
+msgid "ExpressionDataSourceComponent:label:ClipFacialAnimationCount"
+msgstr "Number of Facial Animations"
+
+msgid "ExpressionDataSourceComponent:label:ClipNonFacialAnimationCount"
+msgstr "Number of Non-Facial Animations"
+
+msgid "ExpressionDataSourceComponent:prop:BlendShapeAnimations"
+msgstr "Facial Animations"
+
+msgid "ExpressionDataSourceComponent:prop:BlendShapeAnimations:tooltip"
+msgstr "These are manually set facial animations. They can be used in conjunction with animation clips, or either one can be used alone. If the same blend shape is set simultaneously, manual settings take precedence."
+
+msgid "ExpressionDataSourceComponent:button:OpenEditor"
+msgstr "Edit Facial Expressions"
+
+msgid "ExpressionDataSourceComponent:label:AdvancedOptions"
+msgstr "Advanced Options"
+
+msgid "ExpressionDataSourceComponent:prop:AllBlendShapeAnimationAsFacial"
+msgstr "Treat all blend shape animations as facial animations"
+
+msgid "ExpressionDataSourceComponent:prop:AllBlendShapeAnimationAsFacial:tooltip"
 msgstr "Treats all blend shape animations included in the animation clip as facial animations. This is useful when dealing with animation clips for other avatars where paths may differ."
 
 # ExpressionDataClipImporter
@@ -420,6 +505,20 @@ msgstr "Non-Zero"
 
 msgid "ClipImportOption:enum:FacialStyleOverridesOrNonZero"
 msgstr "Facial Style Overrides or Non-Zero"
+
+# ExpressionDataMode(enum)
+
+msgid "ExpressionDataMode"
+msgstr "Expression Data Mode"
+
+msgid "ExpressionDataMode:tooltip"
+msgstr "Specifies how Expression Data obtains its data."
+
+msgid "ExpressionDataMode:enum:Inline"
+msgstr "Inline"
+
+msgid "ExpressionDataMode:enum:Reference"
+msgstr "Reference"
 
 # FacialEditor
 

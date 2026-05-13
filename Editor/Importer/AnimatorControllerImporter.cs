@@ -1,4 +1,5 @@
 using UnityEditor.Animations;
+using Aoyon.FaceTune.Gui;
 using Aoyon.FaceTune.Platforms;
 
 namespace Aoyon.FaceTune.Importer;
@@ -55,8 +56,10 @@ internal class AnimatorControllerImporter
                             var obj = CreateConditionAndExpression(state, clip, conditions, isBlending);
 
                             var expressionData = obj.AddComponent<ExpressionDataComponent>();
-                            expressionData.Clip = clip;
-                            expressionData.ClipOption = isBlending ? ClipImportOption.All : ClipImportOption.NonZero;
+                            ExpressionDataAuthoringUtility.CreateReferenceBaseFromClip(
+                                expressionData,
+                                clip,
+                                isBlending ? ClipImportOption.All : ClipImportOption.NonZero);
                             
                             validExpressionsPerLayer.Add(obj);
                         }

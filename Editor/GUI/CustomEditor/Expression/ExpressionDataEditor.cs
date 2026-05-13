@@ -8,10 +8,13 @@ internal class ExpressionDataEditor : FaceTuneIMGUIEditorBase<ExpressionDataComp
 {
     private AvatarContext? _context;
 
+    private SerializedProperty _modeProperty = null!;
+    private SerializedProperty _dataReferencesProperty = null!;
     private SerializedProperty _blendShapeAnimationsProperty = null!;
     private SerializedProperty _clipProperty = null!;
     private SerializedProperty _clipOptionProperty = null!;
     private SerializedProperty _allBlendShapeAnimationAsFacialProperty = null!;
+    private LocalizedPopup _modePopup = null!;
     private LocalizedPopup _clipOptionPopup = null!;
 
     private int _facialClipAnimationCount = 0;
@@ -22,11 +25,14 @@ internal class ExpressionDataEditor : FaceTuneIMGUIEditorBase<ExpressionDataComp
     {
         base.OnEnable();
         CustomEditorUtility.TryGetContext(Component.gameObject, out _context);
+        _modeProperty = serializedObject.FindProperty(nameof(ExpressionDataComponent.Mode));
+        _dataReferencesProperty = serializedObject.FindProperty(nameof(ExpressionDataComponent.DataReferences));
         _blendShapeAnimationsProperty = serializedObject.FindProperty(nameof(ExpressionDataComponent.BlendShapeAnimations));
         _clipProperty = serializedObject.FindProperty(nameof(ExpressionDataComponent.Clip));
         _clipOptionProperty = serializedObject.FindProperty(nameof(ExpressionDataComponent.ClipOption));
         _allBlendShapeAnimationAsFacialProperty = serializedObject.FindProperty(nameof(ExpressionDataComponent.AllBlendShapeAnimationAsFacial));
         UpdateInfo();
+        _modePopup = new LocalizedPopup(typeof(ExpressionDataMode));
         _clipOptionPopup = new LocalizedPopup(typeof(ClipImportOption));
         Undo.undoRedoPerformed += UpdateInfo;
     }
@@ -34,18 +40,100 @@ internal class ExpressionDataEditor : FaceTuneIMGUIEditorBase<ExpressionDataComp
     public override void OnDisable()
     {
         base.OnDisable();
+        _modePopup.Dispose();
+        _clipOptionPopup.Dispose();
         Undo.undoRedoPerformed -= UpdateInfo;
     }
 
     protected override void OnInnerInspectorGUI()
-    {   
+    {
+        DrawModeGUI();
+        EditorGUILayout.Space();
         DrawMissingBlendShapeGUI();
         EditorGUILayout.Space();
-        DrawAnimationClipGUI();
+        if ((ExpressionDataMode)_modeProperty.enumValueIndex == ExpressionDataMode.Reference)
+        {
+            DrawReferenceGUI();
+        }
+        else
+        {
+            DrawInlineAuthoringGUI();
+            EditorGUILayout.Space();
+            DrawAnimationClipGUI();
+            EditorGUILayout.Space();
+            DrawManualGUI();
+            EditorGUILayout.Space();
+            DrawAdvancedOptionsGUI();
+        }
+    }
+
+    private void DrawModeGUI()
+    {
+        EditorGUI.BeginChangeCheck();
+        _modePopup.Field(_modeProperty);
+        if (EditorGUI.EndChangeCheck())
+        {
+            EditorApplication.delayCall += UpdateInfo;
+        }
+    }
+
+    private void DrawReferenceGUI()
+    {
+        EditorGUILayout.LabelField($"{ComponentName}:label:ReferenceMode".LG(), EditorStyles.boldLabel);
+        DrawReferenceAuthoringGUI();
         EditorGUILayout.Space();
-        DrawManualGUI();
-        EditorGUILayout.Space();
-        DrawAdvancedOptionsGUI();
+        EditorGUI.BeginChangeCheck();
+        LocalizedPropertyField(_dataReferencesProperty);
+        if (EditorGUI.EndChangeCheck())
+        {
+            EditorApplication.delayCall += UpdateInfo;
+        }
+    }
+
+    private void DrawInlineAuthoringGUI()
+    {
+        if (GUILayout.Button($"{ComponentName}:button:ConvertInlineToReference".LG()))
+        {
+            ApplyPendingSerializedChanges();
+            foreach (var component in targets.OfType<ExpressionDataComponent>())
+            {
+                ExpressionDataAuthoringUtility.ConvertInlineToReference(component);
+            }
+            serializedObject.Update();
+            UpdateInfo();
+        }
+    }
+
+    private void DrawReferenceAuthoringGUI()
+    {
+        if (GUILayout.Button($"{ComponentName}:button:CreateBaseData".LG()))
+        {
+            AddReference(component => ExpressionDataAuthoringUtility.AddBaseData(component));
+        }
+
+        if (GUILayout.Button($"{ComponentName}:button:CreateExpressionOverride".LG()))
+        {
+            AddReference(component => ExpressionDataAuthoringUtility.AddExpressionOverride(component));
+        }
+    }
+
+    private void AddReference(Action<ExpressionDataComponent> addReference)
+    {
+        ApplyPendingSerializedChanges();
+        foreach (var component in targets.OfType<ExpressionDataComponent>())
+        {
+            addReference(component);
+        }
+        serializedObject.Update();
+        UpdateInfo();
+    }
+
+    private void ApplyPendingSerializedChanges()
+    {
+        if (serializedObject.hasModifiedProperties)
+        {
+            serializedObject.ApplyModifiedProperties();
+        }
     }
 
     private void DrawMissingBlendShapeGUI()
@@ -118,15 +206,28 @@ internal class ExpressionDataEditor : FaceTuneIMGUIEditorBase<ExpressionDataComp
             return;
         }
 
-        var (facialAnimations, nonFacialAnimations) = Component.ProcessClip(_context.BodyPath);
+        var facialStyleAnimations = new List<BlendShapeWeightAnimation>();
+        FacialStyleContext.TryGetFacialStyleAnimations(Component.gameObject, facialStyleAnimations);
 
-        _facialClipAnimationCount = facialAnimations.Count;
-        _nonFacialClipAnimationCount = nonFacialAnimations.Count;
+        if (Component.Mode == ExpressionDataMode.Inline)
+        {
+            var (facialAnimations, nonFacialAnimations) = Component.ProcessClip(_context.BodyPath);
+            _facialClipAnimationCount = facialAnimations.Count;
+            _nonFacialClipAnimationCount = nonFacialAnimations.Count;
+        }
+        else
+        {
+            _facialClipAnimationCount = 0;
+            _nonFacialClipAnimationCount = 0;
+        }
+
+        var allAnimations = new List<BlendShapeWeightAnimation>();
+        Component.GetBlendShapeAnimations(allAnimations, facialStyleAnimations, _context.BodyPath);
 
         var allBlendShapes = _context.ZeroBlendShapes
             .Select(x => x.Name)
             .ToHashSet();
-        _missingBlendShapeNames = Component.BlendShapeAnimations.Concat(facialAnimations)
+        _missingBlendShapeNames = allAnimations
             .Distinct()
             .Select(x => x.Name)
             .Where(x => !string.IsNullOrEmpty(x) && !allBlendShapes.Contains(x))

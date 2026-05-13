@@ -115,6 +115,30 @@ msgstr "見つからないブレンドシェイプ"
 msgid "ExpressionDataComponent:label:AnimationClipMode"
 msgstr "アニメーションクリップ"
 
+msgid "ExpressionDataComponent:label:ReferenceMode"
+msgstr "参照"
+
+msgid "ExpressionDataComponent:button:ConvertInlineToReference"
+msgstr "参照モードへ変換"
+
+msgid "ExpressionDataComponent:button:CreateBaseData"
+msgstr "基礎表情データを作成"
+
+msgid "ExpressionDataComponent:button:CreateExpressionOverride"
+msgstr "表情オーバーライドを作成"
+
+msgid "ExpressionDataComponent:prop:Mode"
+msgstr "動作モード"
+
+msgid "ExpressionDataComponent:prop:Mode:tooltip"
+msgstr "このExpression Dataが直接データを持つか、新しい表情データコンポーネントを参照するかを切り替えます。"
+
+msgid "ExpressionDataComponent:prop:DataReferences"
+msgstr "表情データ参照"
+
+msgid "ExpressionDataComponent:prop:DataReferences:tooltip"
+msgstr "合成するBase Expression DataとExpression Overrideコンポーネントです。同一GameObject上のsourceはコンポーネント順で、外部Overrideは対象データに適用されます。"
+
 msgid "ExpressionDataComponent:prop:Clip"
 msgstr "アニメーションクリップ"
 
@@ -149,6 +173,67 @@ msgid "ExpressionDataComponent:prop:AllBlendShapeAnimationAsFacial"
 msgstr "全てのブレンドシェイプアニメーションを表情用アニメーションとして扱う"
 
 msgid "ExpressionDataComponent:prop:AllBlendShapeAnimationAsFacial:tooltip"
+msgstr "アニメーションクリップに含まれるブレンドシェイプアニメーションを全て表情用アニメーションとして扱います。他のアバター向けのアニメーションクリップのように、パスが異なるものを扱う場合に便利です。"
+
+# ExpressionOverrideComponent
+
+msgid "ExpressionOverrideComponent:prop:TargetBase"
+msgstr "対象データ"
+
+msgid "ExpressionOverrideComponent:prop:TargetBase:tooltip"
+msgstr "同一GameObjectのstack外で、このOverrideを適用するBase Expression DataまたはExpression Overrideコンポーネントです。"
+
+msgid "ExpressionOverrideComponent:warning:TargetBaseMissing"
+msgstr "対象データが設定されていません。同一GameObjectのstackに含まれない場合、このOverrideは適用されません。"
+
+msgid "ExpressionOverrideComponent:info:SameGameObjectStack"
+msgstr "同じGameObject上にBase Expression Dataがあるため、このOverrideはコンポーネント順で適用されます。"
+
+msgid "ExpressionOverrideComponent:info:OverrideOnlyStack"
+msgstr "同じGameObject上の先頭Expression Overrideの対象データを使い、このOverrideはコンポーネント順で適用されます。"
+
+# ExpressionDataSourceComponent
+
+msgid "ExpressionDataSourceComponent:prop:Memo"
+msgstr "メモ"
+
+msgid "ExpressionDataSourceComponent:prop:Memo:tooltip"
+msgstr "この表情データsourceの作業用メモです。ビルド、プレビュー、アニメーション出力には影響しません。"
+
+msgid "ExpressionDataSourceComponent:label:MissingBlendShapes"
+msgstr "見つからないブレンドシェイプ"
+
+msgid "ExpressionDataSourceComponent:label:AnimationClipMode"
+msgstr "アニメーションクリップ"
+
+msgid "ExpressionDataSourceComponent:prop:Clip"
+msgstr "アニメーションクリップ"
+
+msgid "ExpressionDataSourceComponent:prop:Clip:tooltip"
+msgstr "このアニメーションクリップは、表情用のブレンドシェイプアニメーションを主に適用しますが、耳の動きなど他の種類のアニメーションも含めることができ、ビルド時に適用されます。"
+
+msgid "ExpressionDataSourceComponent:label:ClipFacialAnimationCount"
+msgstr "表情アニメーションの数"
+
+msgid "ExpressionDataSourceComponent:label:ClipNonFacialAnimationCount"
+msgstr "表情以外のアニメーションの数"
+
+msgid "ExpressionDataSourceComponent:prop:BlendShapeAnimations"
+msgstr "表情アニメーション"
+
+msgid "ExpressionDataSourceComponent:prop:BlendShapeAnimations:tooltip"
+msgstr "手動設定用の表情用アニメーションです。アニメーションクリップとは併用でき、どちらか一方のみを使用することもできます。同じブレンドシェイプが同時に設定された場合は手動設定が優先されます。"
+
+msgid "ExpressionDataSourceComponent:button:OpenEditor"
+msgstr "表情を編集する"
+
+msgid "ExpressionDataSourceComponent:label:AdvancedOptions"
+msgstr "高度な設定"
+
+msgid "ExpressionDataSourceComponent:prop:AllBlendShapeAnimationAsFacial"
+msgstr "全てのブレンドシェイプアニメーションを表情用アニメーションとして扱う"
+
+msgid "ExpressionDataSourceComponent:prop:AllBlendShapeAnimationAsFacial:tooltip"
 msgstr "アニメーションクリップに含まれるブレンドシェイプアニメーションを全て表情用アニメーションとして扱います。他のアバター向けのアニメーションクリップのように、パスが異なるものを扱う場合に便利です。"
 
 # ExpressionDataClipImporter
@@ -417,6 +502,20 @@ msgstr "0以外"
 
 msgid "ClipImportOption:enum:FacialStyleOverridesOrNonZero"
 msgstr "顔つきの上書きまたは0以外"
+
+# ExpressionDataMode(enum)
+
+msgid "ExpressionDataMode"
+msgstr "Expression Dataの動作モード"
+
+msgid "ExpressionDataMode:tooltip"
+msgstr "Expression Dataのデータ取得方法を指定します。"
+
+msgid "ExpressionDataMode:enum:Inline"
+msgstr "直接設定"
+
+msgid "ExpressionDataMode:enum:Reference"
+msgstr "参照"
 
 # FacialEditor
 

@@ -121,6 +121,26 @@ internal class ExpressionDataTargeting : IShapesEditorTargeting<ExpressionDataCo
 
 }
 
+internal class ExpressionDataSourceTargeting<T> : IShapesEditorTargeting<T> where T : ExpressionDataSourceComponent
+{
+    public override T? Target { get; set; } = null;
+
+    public override void Save(GameObject root, SkinnedMeshRenderer renderer, BlendShapeOverrideManager dataManager)
+    {
+        if (Target == null) throw new Exception("Target is not set");
+        var result = new BlendShapeWeightSet();
+        dataManager.GetCurrentOverrides(result);
+        var blendshapeAnimations = result.ToBlendShapeAnimations().ToList();
+        var getProperty = (SerializedObject so) => so.FindProperty(nameof(ExpressionDataSourceComponent.BlendShapeAnimations));
+        CustomEditorUtility.ClearAllElements(Target, getProperty);
+        CustomEditorUtility.AddBlendShapeAnimations(
+            Target,
+            getProperty,
+            blendshapeAnimations
+        );
+    }
+}
+
 internal class FacialStyleTargeting : IShapesEditorTargeting<FacialStyleComponent>
 {
     public override FacialStyleComponent? Target { get; set; } = null;
