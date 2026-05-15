@@ -168,38 +168,7 @@ internal class ExpressionDataSourceEditor : FaceTuneIMGUIEditorBase<ExpressionDa
 
     private void OpenEditor()
     {
-        if (!CustomEditorUtility.TryGetContext(Component.gameObject, out var context)) throw new InvalidOperationException("Context not found");
-
-        var bodyPath = context.BodyPath;
-
-        var facialStyleAnimations = new List<BlendShapeWeightAnimation>();
-        FacialStyleContext.TryGetFacialStyleAnimations(Component.gameObject, facialStyleAnimations);
-
-        var baseSet = new BlendShapeWeightSet();
-        baseSet.AddRange(facialStyleAnimations.ToFirstFrameBlendShapes());
-        if (Component is ExpressionOverrideComponent expressionOverride)
-        {
-            foreach (var source in ExpressionDataComponent.GetOverrideBaseSources(expressionOverride, null))
-            {
-                source.GetBlendShapes(baseSet, facialStyleAnimations, bodyPath);
-            }
-        }
-        baseSet.AddRange(Component.ProcessClip(bodyPath).facialAnimations.ToFirstFrameBlendShapes());
-
-        var defaultOverride = new BlendShapeWeightSet();
-        defaultOverride.AddRange(Component.BlendShapeAnimations.ToFirstFrameBlendShapes());
-
-        CustomEditorUtility.OpenEditor(Component.gameObject, CreateTargeting(Component), defaultOverride, baseSet);
-    }
-
-    private static IShapesEditorTargeting CreateTargeting(ExpressionDataSourceComponent component)
-    {
-        return component switch
-        {
-            BaseExpressionDataComponent baseData => new ExpressionDataSourceTargeting<BaseExpressionDataComponent> { Target = baseData },
-            ExpressionOverrideComponent expressionOverride => new ExpressionDataSourceTargeting<ExpressionOverrideComponent> { Target = expressionOverride },
-            _ => throw new ArgumentOutOfRangeException(nameof(component), component, null)
-        };
+        ExpressionShapesEditorLauncher.Open(Component);
     }
 
     private static bool UsesBaseStack(ExpressionOverrideComponent expressionOverride)

@@ -35,6 +35,9 @@ internal static class MenuItems
     public const string ImportFxPath = GameObjectPath + "Import FX";
     public const int ImportFxPriority = 101;
 
+    public const string ExpressionManagerPath = GameObjectPath + "Expression Manager";
+    public const int ExpressionManagerPriority = 102;
+
     public const string ConditionPath = GameObjectPath + "Condition";
     public const int ConditionPriority = 200;
 
