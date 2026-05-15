@@ -4,15 +4,18 @@ namespace Aoyon.FaceTune.Gui;
 internal class HandGestureConditionDrawer : PropertyDrawer
 {
     private readonly LocalizedPopup _handPopup;
-    private readonly LocalizedPopup _handGesturePopup;
-    private readonly LocalizedPopup _equalityComparisonPopup;
 
     public HandGestureConditionDrawer()
     {
         _handPopup = new LocalizedPopup(null, typeof(Hand).GetEnumNames().Select(k => $"Hand:enum:{k}"));
-        _handGesturePopup = new LocalizedPopup(null, typeof(HandGesture).GetEnumNames().Select(k => $"HandGesture:enum:{k}"));
-        _equalityComparisonPopup = new LocalizedPopup(null, typeof(EqualityComparison).GetEnumNames().Select(k => $"EqualityComparison:enum:{k}"));
     }
+
+    private const float RowSpacing = 4f;
+    private const float FieldSpacing = 4f;
+    private const float HandPopupWidth = 90f;
+    private const float GestureButtonHeight = 28f;
+    private static GUIStyle? _gestureImageButtonStyle;
+    private static GUIStyle? _gestureTextButtonStyle;
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
@@ -22,50 +25,65 @@ internal class HandGestureConditionDrawer : PropertyDrawer
         var handGestureProp = property.FindPropertyRelative(HandGestureCondition.HandGesturePropName);
         var equalityComparisonProp = property.FindPropertyRelative(HandGestureCondition.EqualityComparisonPropName);
 
-        if (!Localization.TryGetLocalizedString("HandGestureCondition:label:Connector1", out var conn1))
-        {
-            conn1 = "";
-        }
-        if (!Localization.TryGetLocalizedString("HandGestureCondition:label:Connector2", out var conn2))
-        {
-            conn2 = "";
-        }
-        if (!Localization.TryGetLocalizedString("HandGestureCondition:label:Order", out var orderStr))
-        {
-            orderStr = "0,1,2,3,4";
-        }
+        var lineHeight = EditorGUIUtility.singleLineHeight;
+        var handRect = new Rect(position.x, position.y, Math.Min(HandPopupWidth, position.width), lineHeight);
+        var gestureRect = new Rect(position.x, handRect.yMax + RowSpacing, position.width, GestureButtonHeight);
+        var comparisonRect = new Rect(position.x, gestureRect.yMax + RowSpacing, position.width, lineHeight);
 
-        var order = orderStr.Split(',').Select(s => s.Trim()).ToArray();
-
-        float spacing = 2f;
-        float c1W = string.IsNullOrEmpty(conn1) ? 0 : EditorStyles.label.CalcSize(new GUIContent(conn1)).x + 3f;
-        float c2W = string.IsNullOrEmpty(conn2) ? 0 : EditorStyles.label.CalcSize(new GUIContent(conn2)).x + 3f;
-        
-        float totalFixed = c1W + c2W + (spacing * (order.Length - 1));
-        float remaining = position.width - totalFixed;
-        float fieldW = remaining / 3f;
-
-        var r = new Rect(position.x, position.y, 0, position.height);
-
-        foreach (var id in order)
-        {
-            switch (id)
-            {
-                case "0": r.width = fieldW * 0.8f; _handPopup.Field(r, handProp); break;
-                case "1": if (c1W > 0) { r.width = c1W; EditorGUI.LabelField(r, conn1); } else continue; break;
-                case "2": r.width = fieldW * 1.2f; _handGesturePopup.Field(r, handGestureProp); break;
-                case "3": if (c2W > 0) { r.width = c2W; EditorGUI.LabelField(r, conn2); } else continue; break;
-                case "4": r.width = fieldW; _equalityComparisonPopup.Field(r, equalityComparisonProp); break;
-                default: continue;
-            }
-            r.x += r.width + spacing;
-        }
+        _handPopup.Field(handRect, handProp);
+        DrawGestureButtons(gestureRect, handGestureProp);
+        DrawComparisonToolbar(comparisonRect, equalityComparisonProp);
 
         EditorGUI.EndProperty();
     }
 
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
-        return EditorGUIUtility.singleLineHeight;
+        return EditorGUIUtility.singleLineHeight * 2f + GestureButtonHeight + RowSpacing * 2f;
     }
+
+    private static void DrawGestureButtons(Rect position, SerializedProperty handGestureProp)
+    {
+        var buttonCount = HandGestureIconSet.Icons.Length;
+        var spacingTotal = FieldSpacing * (buttonCount - 1);
+        var buttonWidth = Math.Max(1f, (position.width - spacingTotal) / buttonCount);
+        var buttonHeight = position.height;
+        var x = position.x;
+        var textColor = EditorStyles.label.normal.textColor;
+
+        for (var i = 0; i < buttonCount; i++)
+        {
+            var buttonRect = new Rect(x, position.y, buttonWidth, buttonHeight);
+            var selected = handGestureProp.enumValueIndex == i;
+            var style = HandGestureIconSet.Icons[i].TextureName == null ? GestureTextButtonStyle : GestureImageButtonStyle;
+            if (GUI.Toggle(buttonRect, selected, HandGestureIconSet.ContentFor(i, textColor), style) && !selected)
+            {
+                handGestureProp.enumValueIndex = i;
+            }
+            x += buttonWidth + FieldSpacing;
+        }
+    }
+
+    private static void DrawComparisonToolbar(Rect position, SerializedProperty equalityComparisonProp)
+    {
+        var contents = new[]
+        {
+            "EqualityComparison:enum:Equal".LG(),
+            "EqualityComparison:enum:NotEqual".LG()
+        };
+        equalityComparisonProp.enumValueIndex = GUI.Toolbar(position, equalityComparisonProp.enumValueIndex, contents);
+    }
+
+    private static GUIStyle GestureImageButtonStyle => _gestureImageButtonStyle ??= new GUIStyle(EditorStyles.toolbarButton)
+    {
+        alignment = TextAnchor.MiddleCenter,
+        imagePosition = ImagePosition.ImageOnly,
+        padding = new RectOffset(2, 2, 2, 2)
+    };
+
+    private static GUIStyle GestureTextButtonStyle => _gestureTextButtonStyle ??= new GUIStyle(EditorStyles.toolbarButton)
+    {
+        alignment = TextAnchor.MiddleCenter,
+        imagePosition = ImagePosition.TextOnly
+    };
 }
