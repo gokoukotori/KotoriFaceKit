@@ -41,6 +41,21 @@ internal static class GameObjectMenu
         importer.Import(root);
     }
 
+    [M(MenuItems.ExpressionManagerPath, true)]
+    static bool ValidateExpressionManager()
+    {
+        var root = GetSelectedAvatarRoot();
+        return root != null && root.GetComponentsInChildren<ExpressionComponent>(true).Length > 0;
+    }
+
+    [M(MenuItems.ExpressionManagerPath, false, MenuItems.ExpressionManagerPriority)]
+    static void ExpressionManager()
+    {
+        var root = GetSelectedAvatarRoot();
+        if (root == null) return;
+        ExpressionManagerWindow.Open(root.gameObject);
+    }
+
     [M(MenuItems.ConditionPath, false, MenuItems.ConditionPriority)] 
     static void Condition() => IP("20aca02f84d174940bb4ca676555589a");
     
@@ -64,5 +79,11 @@ internal static class GameObjectMenu
         if (buildPassState.TryGetBuildPassContext(out var buildPassContext) is false) return;
 
         ModifyHierarchyPass.Excute(buildPassContext);
+    }
+
+    private static Transform? GetSelectedAvatarRoot()
+    {
+        var selected = Selection.activeGameObject;
+        return selected == null ? null : RuntimeUtil.FindAvatarInParents(selected.transform);
     }
 }
