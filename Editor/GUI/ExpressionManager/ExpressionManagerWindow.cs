@@ -5,6 +5,15 @@ internal class ExpressionManagerWindow : EditorWindow
     [SerializeField] private GameObject? _avatarRoot;
     [SerializeField] private string _searchText = string.Empty;
     private readonly Dictionary<int, bool> _foldouts = new();
+    private ExpressionManagerThumbnailCache _thumbnailCache = null!;
+    private IReadOnlyList<ExpressionManagerExpressionItem> _items = Array.Empty<ExpressionManagerExpressionItem>();
+    private IReadOnlyList<ExpressionManagerExpressionItem> _filteredItems = Array.Empty<ExpressionManagerExpressionItem>();
+    private IReadOnlyList<ExpressionManagerUnlinkedSourceItem> _unlinkedSources = Array.Empty<ExpressionManagerUnlinkedSourceItem>();
+    private IReadOnlyList<ExpressionManagerUnlinkedSourceItem> _filteredUnlinkedSources = Array.Empty<ExpressionManagerUnlinkedSourceItem>();
+    private AvatarContext? _avatarContext;
+    private string? _lastSearchText;
+    private string _rendererState = string.Empty;
+    private bool _needsRebuildItems = true;
     private Vector2 _scrollPosition;
 
     public static void Open(GameObject avatarRoot)
@@ -19,12 +28,22 @@ internal class ExpressionManagerWindow : EditorWindow
     {
         titleContent = new GUIContent("Expression Manager");
         minSize = new Vector2(420, 320);
+        _thumbnailCache ??= new ExpressionManagerThumbnailCache();
+        EditorApplication.hierarchyChanged += OnHierarchyChanged;
+    }
+
+    private void OnDisable()
+    {
+        EditorApplication.hierarchyChanged -= OnHierarchyChanged;
+        _thumbnailCache?.Dispose();
+        _thumbnailCache = null!;
     }
 
     private void SetAvatarRoot(GameObject avatarRoot)
     {
         _avatarRoot = avatarRoot;
         _foldouts.Clear();
+        RebuildItems();
     }
 
     private void OnGUI()
@@ -37,31 +56,40 @@ internal class ExpressionManagerWindow : EditorWindow
             return;
         }
 
-        var items = ExpressionManagerItemCollector.Collect(_avatarRoot);
-        var filteredItems = ExpressionManagerItemCollector.Filter(items, _searchText).ToArray();
+        EnsureItems();
+        EnsureFilteredItems();
 
         using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
         {
-            GUILayout.Label($"Expressions: {filteredItems.Length}/{items.Count}", GUILayout.Width(130));
+            GUILayout.Label($"Expressions: {_filteredItems.Count}/{_items.Count}", GUILayout.Width(130));
+            GUILayout.Label($"Unlinked: {_filteredUnlinkedSources.Count}/{_unlinkedSources.Count}", GUILayout.Width(110));
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(70)))
             {
                 GUI.FocusControl(null);
+                RebuildItems();
                 Repaint();
             }
         }
 
-        if (items.Count == 0)
+        if (_items.Count == 0 && _unlinkedSources.Count == 0)
         {
             EditorGUILayout.HelpBox("No FaceTune expressions were found under this avatar.", MessageType.Info);
             return;
         }
 
         _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-        foreach (var item in filteredItems)
+        if (_items.Count == 0)
+        {
+            EditorGUILayout.HelpBox("No FaceTune expressions were found under this avatar.", MessageType.Info);
+        }
+
+        foreach (var item in _filteredItems)
         {
             DrawExpressionItem(item);
         }
+
+        DrawUnlinkedSourcesSection();
         EditorGUILayout.EndScrollView();
     }
 
@@ -114,21 +142,156 @@ internal class ExpressionManagerWindow : EditorWindow
 
             if (!_foldouts[instanceId]) return;
 
-            EditorGUILayout.LabelField("Path", item.HierarchyPath);
-            EditorGUILayout.LabelField("Expression Data", item.ExpressionDataComponents.Count.ToString());
-
-            if (item.EditableTargets.Count == 0)
+            using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.HelpBox("No editable Expression Data was found for this expression.", MessageType.Info);
+                DrawThumbnail(item);
+
+                using (new EditorGUILayout.VerticalScope())
+                {
+                    EditorGUILayout.LabelField("Path", item.HierarchyPath);
+                    EditorGUILayout.LabelField("Expression Data", item.ExpressionDataComponents.Count.ToString());
+
+                    if (item.EditableTargets.Count == 0)
+                    {
+                        EditorGUILayout.HelpBox("No editable Expression Data was found for this expression.", MessageType.Info);
+                        return;
+                    }
+
+                    EditorGUILayout.Space(2);
+                    foreach (var target in item.EditableTargets)
+                    {
+                        DrawEditableTarget(target);
+                    }
+                }
+            }
+        }
+    }
+
+    private void DrawThumbnail(ExpressionManagerExpressionItem item)
+    {
+        var size = ExpressionManagerThumbnailCache.ThumbnailSize;
+        var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
+        if (_avatarContext == null)
+        {
+            GUI.Box(rect, "No Preview");
+            return;
+        }
+
+        var thumbnail = _thumbnailCache.GetOrRequest(item, _avatarContext, _rendererState, Repaint);
+        var texture = thumbnail.Texture;
+        if (texture == null)
+        {
+            GUI.Box(rect, thumbnail.Status == ExpressionManagerThumbnailStatus.Failed ? "No Preview" : "Loading");
+            return;
+        }
+
+        GUI.Box(rect, GUIContent.none);
+        GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit, true);
+    }
+
+    private void DrawUnlinkedSourcesSection()
+    {
+        if (_unlinkedSources.Count == 0) return;
+
+        EditorGUILayout.Space(4);
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField(
+                $"Unlinked Expression Data Sources: {_filteredUnlinkedSources.Count}/{_unlinkedSources.Count}",
+                EditorStyles.boldLabel);
+
+            if (_filteredUnlinkedSources.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No unlinked Expression Data Sources match the current search.", MessageType.Info);
                 return;
             }
 
-            EditorGUILayout.Space(2);
-            foreach (var target in item.EditableTargets)
+            foreach (var item in _filteredUnlinkedSources)
             {
-                DrawEditableTarget(target);
+                DrawUnlinkedSourceItem(item);
             }
         }
+    }
+
+    private void DrawUnlinkedSourceItem(ExpressionManagerUnlinkedSourceItem item)
+    {
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+        {
+            DrawThumbnail(item);
+
+            using (new EditorGUILayout.VerticalScope())
+            {
+                EditorGUILayout.LabelField("Path", item.HierarchyPath);
+                foreach (var component in item.Components)
+                {
+                    DrawEditableTarget(component);
+                }
+            }
+        }
+    }
+
+    private void DrawThumbnail(ExpressionManagerUnlinkedSourceItem item)
+    {
+        var size = ExpressionManagerThumbnailCache.ThumbnailSize;
+        var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
+        if (_avatarContext == null)
+        {
+            GUI.Box(rect, "No Preview");
+            return;
+        }
+
+        var thumbnail = _thumbnailCache.GetOrRequest(item, _avatarContext, _rendererState, Repaint);
+        var texture = thumbnail.Texture;
+        if (texture == null)
+        {
+            GUI.Box(rect, thumbnail.Status == ExpressionManagerThumbnailStatus.Failed ? "No Preview" : "Loading");
+            return;
+        }
+
+        GUI.Box(rect, GUIContent.none);
+        GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit, true);
+    }
+
+    private void OnHierarchyChanged()
+    {
+        _needsRebuildItems = true;
+        _thumbnailCache?.Clear();
+        Repaint();
+    }
+
+    private void RebuildItems()
+    {
+        _needsRebuildItems = true;
+        _thumbnailCache?.Clear();
+        EnsureItems();
+    }
+
+    private void EnsureItems()
+    {
+        if (!_needsRebuildItems || _avatarRoot == null) return;
+
+        _items = ExpressionManagerItemCollector.Collect(_avatarRoot);
+        _unlinkedSources = ExpressionManagerItemCollector.CollectUnlinkedSources(_avatarRoot, _items);
+        _avatarContext = null;
+        _rendererState = string.Empty;
+        if (AvatarContextBuilder.TryBuild(_avatarRoot, out var avatarContext, out _))
+        {
+            _avatarContext = avatarContext;
+            _rendererState = ExpressionManagerThumbnailCache.CreateRendererState(avatarContext.Root);
+        }
+
+        _lastSearchText = null;
+        _needsRebuildItems = false;
+        EnsureFilteredItems();
+    }
+
+    private void EnsureFilteredItems()
+    {
+        if (_lastSearchText == _searchText) return;
+
+        _filteredItems = ExpressionManagerItemCollector.Filter(_items, _searchText).ToArray();
+        _filteredUnlinkedSources = ExpressionManagerItemCollector.FilterUnlinkedSources(_unlinkedSources, _searchText).ToArray();
+        _lastSearchText = _searchText;
     }
 
     private void DrawEditableTarget(Component target)
