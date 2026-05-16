@@ -297,6 +297,8 @@ internal class AnimatorInstaller : InstallerBase
             SetExpressionSettings(state, clip, expression.ExpressionSettings);
             SetFacialSettings(clip, expression.FacialSettings);
         }
+
+        _platformSupport.ApplyParameterDrivers(_controller, state, expression.ParameterDrivers);
     }
 
     private void SetExpressionSettings(VirtualState state, VirtualClip clip, ExpressionSettings expressionSettings)

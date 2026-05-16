@@ -357,6 +357,55 @@ msgstr "Hand Gestures"
 msgid "ConditionComponent:prop:ParameterConditions"
 msgstr "Parameters"
 
+# ParameterDriverComponent
+
+msgid "ParameterDriverComponent:prop:LocalOnly"
+msgstr "Local Only"
+
+msgid "ParameterDriverComponent:prop:Operations"
+msgstr "Operations"
+
+msgid "ParameterDriverComponent:help:AddUsesNumericParameters"
+msgstr "Add is intended for float/int parameters. Use Set, Random, or Copy for bool parameters. Register synced or saved parameters separately with Modular Avatar Parameters or an equivalent component."
+
+# ParameterDriverOperation
+
+msgid "ParameterDriverOperation:prop:Destination"
+msgstr "Destination"
+
+msgid "ParameterDriverOperation:prop:Destination:placeholder"
+msgstr "Destination Parameter"
+
+msgid "ParameterDriverOperation:prop:Source"
+msgstr "Source"
+
+msgid "ParameterDriverOperation:prop:Source:placeholder"
+msgstr "Source Parameter"
+
+msgid "ParameterDriverOperation:prop:Value"
+msgstr "Value"
+
+msgid "ParameterDriverOperation:prop:ValueMin"
+msgstr "Min"
+
+msgid "ParameterDriverOperation:prop:ValueMax"
+msgstr "Max"
+
+msgid "ParameterDriverOperation:prop:Chance"
+msgstr "Chance"
+
+msgid "ParameterDriverOperation:prop:PreventRepeats"
+msgstr "No Repeat"
+
+msgid "ParameterDriverOperation:prop:ConvertRange"
+msgstr "Convert Range"
+
+msgid "ParameterDriverOperation:label:SourceRange"
+msgstr "Source Range"
+
+msgid "ParameterDriverOperation:label:DestinationRange"
+msgstr "Destination Range"
+
 # Hand(enum)
 
 msgid "Hand"
