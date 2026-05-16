@@ -5,6 +5,7 @@
         "Aoyon.FaceTune.Common",
         "Aoyon.FaceTune.Runtime",
         "Aoyon.FaceTune.Editor",
+        "Aoyon.FaceTune.Editor.VRChat",
         "nadena.dev.ndmf",
         "nadena.dev.ndmf.runtime",
         "nadena.dev.modular-avatar.core"
@@ -18,7 +19,9 @@
     "precompiledReferences": [
         "nunit.framework.dll",
         "System.Collections.Immutable.dll",
-        "VRCSDKBase.dll"
+        "VRCSDKBase.dll",
+        "VRCSDK3A.dll",
+        "VRCSDK3A-Editor.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [],

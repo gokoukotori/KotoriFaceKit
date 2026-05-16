@@ -261,6 +261,17 @@ internal class AnimatorControllerImporter
         }
 
         var expression = obj.AddComponent<ExpressionComponent>();
+        foreach (var parameterDriver in _platformSupport.GetParameterDrivers(state))
+        {
+            if (parameterDriver.Operations.Count == 0)
+            {
+                continue;
+            }
+
+            var component = obj.AddComponent<ParameterDriverComponent>();
+            component.LocalOnly = parameterDriver.LocalOnly;
+            component.Operations.AddRange(parameterDriver.Operations);
+        }
 
         expression.ExpressionSettings = new ExpressionSettings()
         {

@@ -36,6 +36,14 @@ internal interface IMetabasePlatformSupport
     {
         return;
     }
+    public void ApplyParameterDrivers(VirtualAnimatorController controller, VirtualState state, IReadOnlyList<ParameterDriverSettings> parameterDrivers)
+    {
+        return;
+    }
+    public IReadOnlyList<ParameterDriverSettings> GetParameterDrivers(AnimatorState state)
+    {
+        return System.Array.Empty<ParameterDriverSettings>();
+    }
     public (TrackingPermission eye, TrackingPermission mouth)? GetTrackingPermission(AnimatorState state)
     {
         return null;

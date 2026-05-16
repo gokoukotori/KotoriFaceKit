@@ -49,7 +49,12 @@ namespace Aoyon.FaceTune
                 AdvancedLipSyncSettings = lipSyncSettings
             };
 
-            return new AvatarExpression(name, animationSet.Animations, ExpressionSettings, facialSettings);
+            var parameterDrivers = gameObject.GetComponentsInChildren<ParameterDriverComponent>(true)
+                .Where(driver => driver.Operations.Count > 0)
+                .Select(driver => driver.ToParameterDriver())
+                .ToList();
+
+            return new AvatarExpression(name, animationSet.Animations, ExpressionSettings, facialSettings, parameterDrivers);
         }
 
         internal IEnumerable<ExpressionWithConditions> GetExpressionWithConditions(AvatarContext avatarContext)

@@ -357,6 +357,55 @@ msgstr "ハンドジェスチャー"
 msgid "ConditionComponent:prop:ParameterConditions"
 msgstr "パラメーター"
 
+# ParameterDriverComponent
+
+msgid "ParameterDriverComponent:prop:LocalOnly"
+msgstr "ローカルのみ"
+
+msgid "ParameterDriverComponent:prop:Operations"
+msgstr "操作"
+
+msgid "ParameterDriverComponent:help:AddUsesNumericParameters"
+msgstr "Addはfloat/int向けの操作です。boolにはSet、Random、Copyを使用してください。同期や保存が必要なパラメーターはModular Avatar Parametersなどで別途登録してください。"
+
+# ParameterDriverOperation
+
+msgid "ParameterDriverOperation:prop:Destination"
+msgstr "Destination"
+
+msgid "ParameterDriverOperation:prop:Destination:placeholder"
+msgstr "Destination Parameter"
+
+msgid "ParameterDriverOperation:prop:Source"
+msgstr "Source"
+
+msgid "ParameterDriverOperation:prop:Source:placeholder"
+msgstr "Source Parameter"
+
+msgid "ParameterDriverOperation:prop:Value"
+msgstr "Value"
+
+msgid "ParameterDriverOperation:prop:ValueMin"
+msgstr "Min"
+
+msgid "ParameterDriverOperation:prop:ValueMax"
+msgstr "Max"
+
+msgid "ParameterDriverOperation:prop:Chance"
+msgstr "Chance"
+
+msgid "ParameterDriverOperation:prop:PreventRepeats"
+msgstr "No Repeat"
+
+msgid "ParameterDriverOperation:prop:ConvertRange"
+msgstr "Convert Range"
+
+msgid "ParameterDriverOperation:label:SourceRange"
+msgstr "Source Range"
+
+msgid "ParameterDriverOperation:label:DestinationRange"
+msgstr "Destination Range"
+
 # Hand(enum)
 
 msgid "Hand"

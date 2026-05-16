@@ -1,6 +1,7 @@
 #if FaceTune_VRCSDK3_AVATARS
 
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -144,6 +145,110 @@ internal class VRChatSupport : IMetabasePlatformSupport
             valueMin = min,
             valueMax = max,
         });
+    }
+
+    public void ApplyParameterDrivers(VirtualAnimatorController controller, VirtualState state, IReadOnlyList<ParameterDriverSettings> parameterDrivers)
+    {
+        foreach (var parameterDriver in parameterDrivers.Where(driver => driver.Operations.Count > 0))
+        {
+            var behaviour = ScriptableObject.CreateInstance<VRCAvatarParameterDriver>();
+            behaviour.localOnly = parameterDriver.LocalOnly;
+            foreach (var operation in parameterDriver.Operations)
+            {
+                EnsureParameterExists(controller, operation.Destination);
+                if (operation.Type == ParameterDriverChangeType.Copy)
+                {
+                    EnsureParameterExists(controller, operation.Source);
+                }
+                behaviour.parameters.Add(ToVrcParameter(operation));
+            }
+            state.Behaviours = state.Behaviours.Add(behaviour);
+        }
+    }
+
+    private static void EnsureParameterExists(VirtualAnimatorController controller, string parameter)
+    {
+        if (!string.IsNullOrWhiteSpace(parameter))
+        {
+            controller.EnsureFloatParameterExists(parameter);
+        }
+    }
+
+    private static VRC_AvatarParameterDriver.Parameter ToVrcParameter(ParameterDriverOperation operation)
+    {
+        return new VRC_AvatarParameterDriver.Parameter
+        {
+            type = operation.Type switch
+            {
+                ParameterDriverChangeType.Set => VRC_AvatarParameterDriver.ChangeType.Set,
+                ParameterDriverChangeType.Add => VRC_AvatarParameterDriver.ChangeType.Add,
+                ParameterDriverChangeType.Random => VRC_AvatarParameterDriver.ChangeType.Random,
+                ParameterDriverChangeType.Copy => VRC_AvatarParameterDriver.ChangeType.Copy,
+                _ => VRC_AvatarParameterDriver.ChangeType.Set
+            },
+            name = operation.Destination,
+            source = operation.Source,
+            value = operation.Value,
+            valueMin = operation.ValueMin,
+            valueMax = operation.ValueMax,
+            chance = operation.Chance,
+            preventRepeats = operation.PreventRepeats,
+            convertRange = operation.ConvertRange,
+            sourceMin = operation.SourceMin,
+            sourceMax = operation.SourceMax,
+            destMin = operation.DestinationMin,
+            destMax = operation.DestinationMax,
+        };
+    }
+
+    public IReadOnlyList<ParameterDriverSettings> GetParameterDrivers(AnimatorState state)
+    {
+        if (state.behaviours == null) return System.Array.Empty<ParameterDriverSettings>();
+
+        var parameterDrivers = new List<ParameterDriverSettings>();
+        foreach (var behaviour in state.behaviours)
+        {
+            if (behaviour is not VRCAvatarParameterDriver parameterDriver)
+            {
+                continue;
+            }
+
+            var operations = parameterDriver.parameters
+                .Select(FromVrcParameter)
+                .ToArray();
+            if (operations.Length > 0)
+            {
+                parameterDrivers.Add(new ParameterDriverSettings(parameterDriver.localOnly, operations));
+            }
+        }
+        return parameterDrivers;
+    }
+
+    private static ParameterDriverOperation FromVrcParameter(VRC_AvatarParameterDriver.Parameter parameter)
+    {
+        return new ParameterDriverOperation
+        {
+            Type = parameter.type switch
+            {
+                VRC_AvatarParameterDriver.ChangeType.Set => ParameterDriverChangeType.Set,
+                VRC_AvatarParameterDriver.ChangeType.Add => ParameterDriverChangeType.Add,
+                VRC_AvatarParameterDriver.ChangeType.Random => ParameterDriverChangeType.Random,
+                VRC_AvatarParameterDriver.ChangeType.Copy => ParameterDriverChangeType.Copy,
+                _ => ParameterDriverChangeType.Set
+            },
+            Destination = parameter.name,
+            Source = parameter.source,
+            Value = parameter.value,
+            ValueMin = parameter.valueMin,
+            ValueMax = parameter.valueMax,
+            Chance = parameter.chance,
+            PreventRepeats = parameter.preventRepeats,
+            ConvertRange = parameter.convertRange,
+            SourceMin = parameter.sourceMin,
+            SourceMax = parameter.sourceMax,
+            DestinationMin = parameter.destMin,
+            DestinationMax = parameter.destMax,
+        };
     }
 
     public (TrackingPermission eye, TrackingPermission mouth)? GetTrackingPermission(AnimatorState state)
