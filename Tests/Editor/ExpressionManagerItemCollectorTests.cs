@@ -204,6 +204,109 @@ namespace Aoyon.FaceTune.Tests
             Assert.That(pathMatches.Select(item => item.Expression.name).ToArray(), Is.EqualTo(new[] { "Angry" }));
         }
 
+        [Test]
+        public void CollectDisplayItemsGroupsPresetPatternAndUngroupedExpressions()
+        {
+            var presetObject = CreateChild(_avatarRoot, "Preset A");
+            var preset = presetObject.AddComponent<PresetComponent>();
+            var presetPatternObject = CreateChild(presetObject, "Preset Pattern");
+            var presetPattern = presetPatternObject.AddComponent<PatternComponent>();
+            var presetExpression = CreateExpression(presetPatternObject, "Preset Smile");
+            var patternObject = CreateChild(_avatarRoot, "Standalone Pattern");
+            var pattern = patternObject.AddComponent<PatternComponent>();
+            var patternExpression = CreateExpression(patternObject, "Pattern Angry");
+            var ungroupedExpression = CreateExpression(_avatarRoot, "Loose Happy");
+
+            var displayItems = ExpressionManagerItemCollector.CollectDisplayItems(_avatarRoot).ToArray();
+
+            Assert.That(displayItems, Has.Length.EqualTo(3));
+            var presetGroup = (ExpressionManagerPresetGroup)displayItems[0];
+            var patternGroup = (ExpressionManagerPatternGroup)displayItems[1];
+            var looseItem = (ExpressionManagerExpressionItem)displayItems[2];
+
+            Assert.That(presetGroup.Preset, Is.EqualTo(preset));
+            Assert.That(presetGroup.HierarchyPath, Is.EqualTo("Preset A"));
+            Assert.That(presetGroup.Patterns.Single().Pattern, Is.EqualTo(presetPattern));
+            Assert.That(presetGroup.Patterns.Single().Expressions.Select(item => item.Expression), Is.EqualTo(new[] { presetExpression }));
+            Assert.That(patternGroup.Pattern, Is.EqualTo(pattern));
+            Assert.That(patternGroup.Expressions.Select(item => item.Expression), Is.EqualTo(new[] { patternExpression }));
+            Assert.That(looseItem.Expression, Is.EqualTo(ungroupedExpression));
+        }
+
+        [Test]
+        public void CollectDisplayItemsDoesNotDuplicateGroupedExpressions()
+        {
+            var presetObject = CreateChild(_avatarRoot, "Preset A");
+            presetObject.AddComponent<PresetComponent>();
+            var presetPatternObject = CreateChild(presetObject, "Preset Pattern");
+            presetPatternObject.AddComponent<PatternComponent>();
+            var presetExpression = CreateExpression(presetPatternObject, "Preset Smile");
+            var patternObject = CreateChild(_avatarRoot, "Standalone Pattern");
+            patternObject.AddComponent<PatternComponent>();
+            var patternExpression = CreateExpression(patternObject, "Pattern Angry");
+            var ungroupedExpression = CreateExpression(_avatarRoot, "Loose Happy");
+
+            var displayItems = ExpressionManagerItemCollector.CollectDisplayItems(_avatarRoot).ToArray();
+            var expressions = displayItems
+                .SelectMany(item => item.Expressions)
+                .Select(item => item.Expression)
+                .ToArray();
+
+            Assert.That(expressions, Is.EquivalentTo(new[] { presetExpression, patternExpression, ungroupedExpression }));
+            Assert.That(expressions, Has.Length.EqualTo(expressions.Distinct().Count()));
+        }
+
+        [Test]
+        public void FilterDisplayItemsMatchesPresetNameAndShowsAllChildren()
+        {
+            var presetObject = CreateChild(_avatarRoot, "Preset A");
+            presetObject.AddComponent<PresetComponent>();
+            var presetPatternObject = CreateChild(presetObject, "Preset Pattern");
+            presetPatternObject.AddComponent<PatternComponent>();
+            var presetSmile = CreateExpression(presetPatternObject, "Preset Smile");
+            var presetAngry = CreateExpression(presetPatternObject, "Preset Angry");
+            CreateExpression(_avatarRoot, "Loose Happy");
+            var displayItems = ExpressionManagerItemCollector.CollectDisplayItems(_avatarRoot);
+
+            var filtered = ExpressionManagerItemCollector.FilterDisplayItems(displayItems, "preset a").ToArray();
+
+            var presetGroup = (ExpressionManagerPresetGroup)filtered.Single();
+            Assert.That(presetGroup.Patterns.Single().Expressions.Select(item => item.Expression), Is.EqualTo(new[] { presetSmile, presetAngry }));
+        }
+
+        [Test]
+        public void FilterDisplayItemsMatchesPatternNameAndShowsAllPatternChildren()
+        {
+            var patternObject = CreateChild(_avatarRoot, "Standalone Pattern");
+            patternObject.AddComponent<PatternComponent>();
+            var angry = CreateExpression(patternObject, "Pattern Angry");
+            var sad = CreateExpression(patternObject, "Pattern Sad");
+            CreateExpression(_avatarRoot, "Loose Happy");
+            var displayItems = ExpressionManagerItemCollector.CollectDisplayItems(_avatarRoot);
+
+            var filtered = ExpressionManagerItemCollector.FilterDisplayItems(displayItems, "standalone").ToArray();
+
+            var patternGroup = (ExpressionManagerPatternGroup)filtered.Single();
+            Assert.That(patternGroup.Expressions.Select(item => item.Expression), Is.EqualTo(new[] { angry, sad }));
+        }
+
+        [Test]
+        public void FilterDisplayItemsKeepsParentGroupsForExpressionMatches()
+        {
+            var presetObject = CreateChild(_avatarRoot, "Preset A");
+            presetObject.AddComponent<PresetComponent>();
+            var presetPatternObject = CreateChild(presetObject, "Preset Pattern");
+            presetPatternObject.AddComponent<PatternComponent>();
+            var smile = CreateExpression(presetPatternObject, "Preset Smile");
+            CreateExpression(presetPatternObject, "Preset Angry");
+            var displayItems = ExpressionManagerItemCollector.CollectDisplayItems(_avatarRoot);
+
+            var filtered = ExpressionManagerItemCollector.FilterDisplayItems(displayItems, "smile").ToArray();
+
+            var presetGroup = (ExpressionManagerPresetGroup)filtered.Single();
+            Assert.That(presetGroup.Patterns.Single().Expressions.Select(item => item.Expression), Is.EqualTo(new[] { smile }));
+        }
+
         private static GameObject CreateChild(GameObject parent, string name)
         {
             var child = new GameObject(name);

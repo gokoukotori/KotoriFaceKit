@@ -1,6 +1,14 @@
 namespace Aoyon.FaceTune.Gui;
 
+internal interface IExpressionManagerDisplayItem
+{
+    public string HierarchyPath { get; }
+    public int ExpressionCount { get; }
+    public IReadOnlyList<ExpressionManagerExpressionItem> Expressions { get; }
+}
+
 internal sealed class ExpressionManagerExpressionItem
+    : IExpressionManagerDisplayItem
 {
     public GameObject AvatarRoot { get; }
     public ExpressionComponent Expression { get; }
@@ -8,6 +16,8 @@ internal sealed class ExpressionManagerExpressionItem
     public IReadOnlyList<ExpressionDataComponent> ExpressionDataComponents { get; }
     public IReadOnlyList<Component> EditableTargets { get; }
     public int ConditionCount { get; }
+    public int ExpressionCount => 1;
+    public IReadOnlyList<ExpressionManagerExpressionItem> Expressions => new[] { this };
 
     public ExpressionManagerExpressionItem(
         GameObject avatarRoot,
@@ -23,6 +33,46 @@ internal sealed class ExpressionManagerExpressionItem
         ExpressionDataComponents = expressionDataComponents;
         EditableTargets = editableTargets;
         ConditionCount = conditionCount;
+    }
+}
+
+internal sealed class ExpressionManagerPatternGroup : IExpressionManagerDisplayItem
+{
+    public PatternComponent Pattern { get; }
+    public string HierarchyPath { get; }
+    public IReadOnlyList<ExpressionManagerExpressionItem> Expressions { get; }
+    public int ExpressionCount => Expressions.Count;
+
+    public ExpressionManagerPatternGroup(
+        PatternComponent pattern,
+        string hierarchyPath,
+        IReadOnlyList<ExpressionManagerExpressionItem> expressions)
+    {
+        Pattern = pattern;
+        HierarchyPath = hierarchyPath;
+        Expressions = expressions;
+    }
+}
+
+internal sealed class ExpressionManagerPresetGroup : IExpressionManagerDisplayItem
+{
+    public PresetComponent Preset { get; }
+    public string HierarchyPath { get; }
+    public IReadOnlyList<ExpressionManagerPatternGroup> Patterns { get; }
+    public IReadOnlyList<ExpressionManagerExpressionItem> Expressions { get; }
+    public int ExpressionCount => Expressions.Count;
+
+    public ExpressionManagerPresetGroup(
+        PresetComponent preset,
+        string hierarchyPath,
+        IReadOnlyList<ExpressionManagerPatternGroup> patterns)
+    {
+        Preset = preset;
+        HierarchyPath = hierarchyPath;
+        Patterns = patterns;
+        Expressions = patterns
+            .SelectMany(pattern => pattern.Expressions)
+            .ToArray();
     }
 }
 
@@ -61,6 +111,48 @@ internal static class ExpressionManagerItemCollector
             .ToArray();
     }
 
+    public static IReadOnlyList<IExpressionManagerDisplayItem> CollectDisplayItems(GameObject avatarRoot)
+    {
+        var expressionItems = Collect(avatarRoot);
+        var assignedExpressions = new HashSet<ExpressionComponent>();
+        var displayItems = new List<IExpressionManagerDisplayItem>();
+
+        foreach (var preset in avatarRoot.GetComponentsInChildren<PresetComponent>(true))
+        {
+            var group = CreatePresetGroup(avatarRoot, preset, expressionItems, assignedExpressions);
+            if (group != null)
+            {
+                displayItems.Add(group);
+            }
+        }
+
+        foreach (var pattern in avatarRoot.GetComponentsInChildren<PatternComponent>(true))
+        {
+            if (GetNearestComponentInParents<PresetComponent>(pattern.transform, avatarRoot.transform) != null) continue;
+
+            var group = CreatePatternGroup(
+                avatarRoot,
+                pattern,
+                expressionItems,
+                assignedExpressions,
+                requiredPreset: null);
+            if (group != null)
+            {
+                displayItems.Add(group);
+            }
+        }
+
+        foreach (var item in expressionItems)
+        {
+            if (assignedExpressions.Contains(item.Expression)) continue;
+            displayItems.Add(item);
+        }
+
+        return displayItems
+            .OrderBy(item => GetDisplayOrderKey(avatarRoot.transform, item))
+            .ToArray();
+    }
+
     public static IEnumerable<ExpressionManagerExpressionItem> Filter(
         IEnumerable<ExpressionManagerExpressionItem> items,
         string searchText)
@@ -71,9 +163,23 @@ internal static class ExpressionManagerItemCollector
         }
 
         var query = searchText.Trim();
-        return items.Where(item =>
-            item.Expression.name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
-            item.HierarchyPath.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
+        return items.Where(item => MatchesExpression(item, query));
+    }
+
+    public static IEnumerable<IExpressionManagerDisplayItem> FilterDisplayItems(
+        IEnumerable<IExpressionManagerDisplayItem> items,
+        string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return items;
+        }
+
+        var query = searchText.Trim();
+        return items
+            .Select(item => FilterDisplayItem(item, query))
+            .Where(item => item != null)
+            .Select(item => item!);
     }
 
     public static IReadOnlyList<ExpressionManagerUnlinkedSourceItem> CollectUnlinkedSources(
@@ -151,6 +257,122 @@ internal static class ExpressionManagerItemCollector
             if (result.Contains(component)) continue;
             result.Add(component);
         }
+    }
+
+    private static ExpressionManagerPresetGroup? CreatePresetGroup(
+        GameObject avatarRoot,
+        PresetComponent preset,
+        IReadOnlyList<ExpressionManagerExpressionItem> expressionItems,
+        ISet<ExpressionComponent> assignedExpressions)
+    {
+        var patterns = preset
+            .GetComponentsInChildren<PatternComponent>(true)
+            .OrderBy(pattern => GetSiblingOrderKey(avatarRoot.transform, pattern.transform))
+            .Select(pattern => CreatePatternGroup(
+                avatarRoot,
+                pattern,
+                expressionItems,
+                assignedExpressions,
+                preset))
+            .Where(group => group != null)
+            .Select(group => group!)
+            .ToArray();
+
+        return patterns.Length == 0
+            ? null
+            : new ExpressionManagerPresetGroup(
+                preset,
+                GetRelativePath(avatarRoot.transform, preset.transform),
+                patterns);
+    }
+
+    private static ExpressionManagerPatternGroup? CreatePatternGroup(
+        GameObject avatarRoot,
+        PatternComponent pattern,
+        IReadOnlyList<ExpressionManagerExpressionItem> expressionItems,
+        ISet<ExpressionComponent> assignedExpressions,
+        PresetComponent? requiredPreset)
+    {
+        var expressions = expressionItems
+            .Where(item => !assignedExpressions.Contains(item.Expression))
+            .Where(item => GetNearestComponentInParents<PatternComponent>(item.Expression.transform, avatarRoot.transform) == pattern)
+            .Where(item => GetNearestComponentInParents<PresetComponent>(item.Expression.transform, avatarRoot.transform) == requiredPreset)
+            .ToArray();
+
+        if (expressions.Length == 0) return null;
+
+        foreach (var expression in expressions)
+        {
+            assignedExpressions.Add(expression.Expression);
+        }
+
+        return new ExpressionManagerPatternGroup(
+            pattern,
+            GetRelativePath(avatarRoot.transform, pattern.transform),
+            expressions);
+    }
+
+    private static IExpressionManagerDisplayItem? FilterDisplayItem(
+        IExpressionManagerDisplayItem item,
+        string query)
+    {
+        return item switch
+        {
+            ExpressionManagerPresetGroup presetGroup => FilterPresetGroup(presetGroup, query),
+            ExpressionManagerPatternGroup patternGroup => FilterPatternGroup(patternGroup, query),
+            ExpressionManagerExpressionItem expressionItem => MatchesExpression(expressionItem, query) ? expressionItem : null,
+            _ => null
+        };
+    }
+
+    private static ExpressionManagerPresetGroup? FilterPresetGroup(
+        ExpressionManagerPresetGroup group,
+        string query)
+    {
+        if (MatchesComponent(group.Preset, group.HierarchyPath, query))
+        {
+            return group;
+        }
+
+        var patterns = group.Patterns
+            .Select(pattern => FilterPatternGroup(pattern, query))
+            .Where(pattern => pattern != null)
+            .Select(pattern => pattern!)
+            .ToArray();
+
+        return patterns.Length == 0
+            ? null
+            : new ExpressionManagerPresetGroup(group.Preset, group.HierarchyPath, patterns);
+    }
+
+    private static ExpressionManagerPatternGroup? FilterPatternGroup(
+        ExpressionManagerPatternGroup group,
+        string query)
+    {
+        if (MatchesComponent(group.Pattern, group.HierarchyPath, query))
+        {
+            return group;
+        }
+
+        var expressions = group.Expressions
+            .Where(item => MatchesExpression(item, query))
+            .ToArray();
+
+        return expressions.Length == 0
+            ? null
+            : new ExpressionManagerPatternGroup(group.Pattern, group.HierarchyPath, expressions);
+    }
+
+    private static bool MatchesComponent(Component component, string hierarchyPath, string query)
+    {
+        return component.name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+               hierarchyPath.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static bool MatchesExpression(ExpressionManagerExpressionItem item, string query)
+    {
+        return item.Expression.name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+               item.HierarchyPath.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static IEnumerable<IReadOnlyList<ExpressionDataSourceComponent>> CreateUnlinkedSourceStacks(
@@ -277,6 +499,34 @@ internal static class ExpressionManagerItemCollector
         }
 
         return names.Count == 0 ? target.name : string.Join("/", names);
+    }
+
+    private static T? GetNearestComponentInParents<T>(Transform target, Transform root) where T : Component
+    {
+        var current = target;
+        while (current != null)
+        {
+            if (current.TryGetComponent<T>(out var component))
+            {
+                return component;
+            }
+
+            if (current == root) break;
+            current = current.parent;
+        }
+
+        return null;
+    }
+
+    private static string GetDisplayOrderKey(Transform root, IExpressionManagerDisplayItem item)
+    {
+        return item switch
+        {
+            ExpressionManagerPresetGroup presetGroup => GetSiblingOrderKey(root, presetGroup.Preset.transform),
+            ExpressionManagerPatternGroup patternGroup => GetSiblingOrderKey(root, patternGroup.Pattern.transform),
+            ExpressionManagerExpressionItem expressionItem => GetSiblingOrderKey(root, expressionItem.Expression.transform),
+            _ => string.Empty
+        };
     }
 
     private static string GetSiblingOrderKey(Transform root, Transform target)
