@@ -6,6 +6,8 @@ internal class ExpressionManagerWindow : EditorWindow
     [SerializeField] private string _searchText = string.Empty;
     private readonly Dictionary<int, bool> _foldouts = new();
     private ExpressionManagerThumbnailCache _thumbnailCache = null!;
+    private IReadOnlyList<IExpressionManagerDisplayItem> _displayItems = Array.Empty<IExpressionManagerDisplayItem>();
+    private IReadOnlyList<IExpressionManagerDisplayItem> _filteredDisplayItems = Array.Empty<IExpressionManagerDisplayItem>();
     private IReadOnlyList<ExpressionManagerExpressionItem> _items = Array.Empty<ExpressionManagerExpressionItem>();
     private IReadOnlyList<ExpressionManagerExpressionItem> _filteredItems = Array.Empty<ExpressionManagerExpressionItem>();
     private IReadOnlyList<ExpressionManagerUnlinkedSourceItem> _unlinkedSources = Array.Empty<ExpressionManagerUnlinkedSourceItem>();
@@ -84,9 +86,9 @@ internal class ExpressionManagerWindow : EditorWindow
             EditorGUILayout.HelpBox("No FaceTune expressions were found under this avatar.", MessageType.Info);
         }
 
-        foreach (var item in _filteredItems)
+        foreach (var item in _filteredDisplayItems)
         {
-            DrawExpressionItem(item);
+            DrawDisplayItem(item);
         }
 
         DrawUnlinkedSourcesSection();
@@ -111,6 +113,96 @@ internal class ExpressionManagerWindow : EditorWindow
             }
 
             _searchText = EditorGUILayout.TextField("Search", _searchText);
+        }
+    }
+
+    private void DrawDisplayItem(IExpressionManagerDisplayItem item)
+    {
+        switch (item)
+        {
+            case ExpressionManagerPresetGroup presetGroup:
+                DrawPresetGroup(presetGroup);
+                break;
+            case ExpressionManagerPatternGroup patternGroup:
+                DrawPatternGroup(patternGroup);
+                break;
+            case ExpressionManagerExpressionItem expressionItem:
+                DrawExpressionItem(expressionItem);
+                break;
+        }
+    }
+
+    private void DrawPresetGroup(ExpressionManagerPresetGroup group)
+    {
+        var instanceId = group.Preset.GetInstanceID();
+        if (!_foldouts.TryGetValue(instanceId, out var isExpanded))
+        {
+            isExpanded = true;
+        }
+
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _foldouts[instanceId] = EditorGUILayout.Foldout(
+                    isExpanded,
+                    group.Preset.name,
+                    true,
+                    EditorStyles.foldoutHeader);
+
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"Expressions: {group.ExpressionCount}", GUILayout.Width(96));
+                if (GUILayout.Button("Select", GUILayout.Width(58)))
+                {
+                    SelectObject(group.Preset);
+                }
+            }
+
+            if (!_foldouts[instanceId]) return;
+
+            EditorGUILayout.LabelField("Path", group.HierarchyPath);
+            EditorGUILayout.Space(2);
+            foreach (var pattern in group.Patterns)
+            {
+                DrawPatternGroup(pattern);
+            }
+        }
+    }
+
+    private void DrawPatternGroup(ExpressionManagerPatternGroup group)
+    {
+        var instanceId = group.Pattern.GetInstanceID();
+        if (!_foldouts.TryGetValue(instanceId, out var isExpanded))
+        {
+            isExpanded = true;
+        }
+
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _foldouts[instanceId] = EditorGUILayout.Foldout(
+                    isExpanded,
+                    group.Pattern.name,
+                    true,
+                    EditorStyles.foldoutHeader);
+
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"Expressions: {group.ExpressionCount}", GUILayout.Width(96));
+                if (GUILayout.Button("Select", GUILayout.Width(58)))
+                {
+                    SelectObject(group.Pattern);
+                }
+            }
+
+            if (!_foldouts[instanceId]) return;
+
+            EditorGUILayout.LabelField("Path", group.HierarchyPath);
+            EditorGUILayout.Space(2);
+            foreach (var expression in group.Expressions)
+            {
+                DrawExpressionItem(expression);
+            }
         }
     }
 
@@ -270,7 +362,10 @@ internal class ExpressionManagerWindow : EditorWindow
     {
         if (!_needsRebuildItems || _avatarRoot == null) return;
 
-        _items = ExpressionManagerItemCollector.Collect(_avatarRoot);
+        _displayItems = ExpressionManagerItemCollector.CollectDisplayItems(_avatarRoot);
+        _items = _displayItems
+            .SelectMany(item => item.Expressions)
+            .ToArray();
         _unlinkedSources = ExpressionManagerItemCollector.CollectUnlinkedSources(_avatarRoot, _items);
         _avatarContext = null;
         _rendererState = string.Empty;
@@ -289,7 +384,10 @@ internal class ExpressionManagerWindow : EditorWindow
     {
         if (_lastSearchText == _searchText) return;
 
-        _filteredItems = ExpressionManagerItemCollector.Filter(_items, _searchText).ToArray();
+        _filteredDisplayItems = ExpressionManagerItemCollector.FilterDisplayItems(_displayItems, _searchText).ToArray();
+        _filteredItems = _filteredDisplayItems
+            .SelectMany(item => item.Expressions)
+            .ToArray();
         _filteredUnlinkedSources = ExpressionManagerItemCollector.FilterUnlinkedSources(_unlinkedSources, _searchText).ToArray();
         _lastSearchText = _searchText;
     }
